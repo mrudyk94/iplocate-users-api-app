@@ -15,7 +15,7 @@ Backend API сервіс для роботи з користувачами.
 
 ### 1️⃣ Клонування репозиторію
 ```bash
-git clone https://github.com/mrudyk94/users-api-app.git
+git clone https://github.com/mrudyk94/iplocate-users-api-app.git
 cd users-api-app
 ```
 
@@ -44,7 +44,7 @@ run up
 
 ### 4️⃣ Встановлення залежностей (Composer) без входу в контейнер
 ```bash
-docker compose exec api composer install
+docker compose exec iplocate composer install
 ```
 
 ### 5️⃣ Міграції бази даних без входу в контейнер

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\DTO;
+namespace App\UI\DTO;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class UpdateUserInput
+final readonly class UpdateUserInput
 {
     #[Assert\NotBlank(message: 'ID cannot be empty')]
     #[Assert\Type(type: 'integer', message: 'ID must be an integer')]

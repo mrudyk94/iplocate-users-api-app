@@ -6,144 +6,127 @@ namespace App\Domain\Entity;
 
 use App\Domain\Entity\Traits\EntityId;
 use App\Domain\Entity\Traits\Timestampable;
-use App\Domain\ValueObject\MobilePhone;
 use App\Infrastructure\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
+use Doctrine\Common\Collections\Collection;
 
 #[ORM\Table(name: 'user')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-
-/**
- * Тут я зробив складовий індекс для 'login' і 'phone', а не як в завданні 'login' і 'password'.
- * Унікальність по 'password' майже ніколи не спрацює, бо завжди створюється новий хеш навіть для того самого пароля.
- * Складовий індекс на login + password — практично марний.
- */
-#[ORM\UniqueConstraint(name: 'login_phone_unique_idx', columns: ['login', 'phone'])]
-class User implements UserInterface, EntityInterface, PasswordAuthenticatedUserInterface
+class User implements EntityInterface
 {
     use EntityId;
     use Timestampable;
 
-    #[ORM\Column(name: 'login', type: Types::STRING, length: 8)]
-    private string $login;
+    #[ORM\Column(name: 'firstName', type: Types::STRING, length: 100)]
+    private string $firstName;
 
-    #[ORM\Column(name: 'phone', type: 'vo_mobile_phone', length: 13)]
-    private MobilePhone $phone;
+    #[ORM\Column(name: 'lastName', type: Types::STRING, length: 100)]
+    private string $lastName;
 
-    #[ORM\Column(name: 'password', type: Types::STRING, length: 64)]
-    private string $password;
+    #[ORM\Column(name: 'ip', length: 45, nullable: true)]
+    private ?string $ip;
 
-    #[ORM\Column(name: 'roles', type: Types::JSON)]
-    private array $roles = [];
+    #[ORM\Column(name: 'country', length: 100, nullable: true)]
+    private ?string $country = null;
 
-    #[ORM\Column(type: Types::STRING, length: 512, nullable: true)]
-    private ?string $apiToken = null;
-
-    /**
-     * @return string|null
-     */
-    public function getLogin(): ?string
-    {
-        return $this->login;
-    }
+    #[ORM\OneToMany(
+        targetEntity: PhoneNumber::class,
+        mappedBy: 'user',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true
+    )]
+    private Collection $phoneNumbers;
 
     /**
-     * @param string|null $login
-     * @return void
+     * @param string $firstName
+     * @param string $lastName
+     * @param string|null $ip
      */
-    public function setLogin(?string $login): void
+    public function __construct(string $firstName, string $lastName, ?string $ip = null)
     {
-        $this->login = $login;
-    }
-
-    /**
-     * @return MobilePhone|null
-     */
-    public function getPhone(): ?MobilePhone
-    {
-        return $this->phone;
-    }
-
-    /**
-     * @param MobilePhone|null $phone
-     * @return void
-     */
-    public function setPhone(?MobilePhone $phone): void
-    {
-        $this->phone = $phone;
+        $this->firstName = $firstName;
+        $this->lastName = $lastName;
+        $this->ip = $ip;
+        $this->phoneNumbers = new ArrayCollection();
     }
 
     /**
      * @return string
      */
-    public function getPassword(): string
+    public function getFirstName(): string
     {
-        return $this->password;
-    }
-
-    /**
-     * @param string $password
-     * @return void
-     */
-    public function setPassword(string $password): void
-    {
-        $this->password = $password;
-    }
-
-    /**
-     * @return string[]UserRepository.php
-     */
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-
-        $roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
-    }
-
-    /**
-     * @param array $roles
-     * @return void
-     */
-    public function setRoles(array $roles): void
-    {
-        $this->roles = $roles;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getApiToken(): ?string
-    {
-        return $this->apiToken;
-    }
-
-    /**
-     * @param string|null $apiToken
-     * @return void
-     */
-    public function setApiToken(?string $apiToken): void
-    {
-        $this->apiToken = $apiToken;
-    }
-
-    /**
-     * @return void
-     */
-    public function eraseCredentials(): void
-    {
-        // TODO: Implement eraseCredentials() method.
+        return $this->firstName;
     }
 
     /**
      * @return string
      */
-    public function getUserIdentifier(): string
+    public function getLastName(): string
     {
-        return $this->phone->asString();
+        return $this->lastName;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getIp(): ?string
+    {
+        return $this->ip;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getCountry(): ?string
+    {
+        return $this->country;
+    }
+
+    /**
+     * @param string|null $country
+     * @return void
+     */
+    public function setCountry(?string $country): void
+    {
+        $this->country = $country;
+    }
+
+    /**
+     * @return Collection
+     */
+    public function getPhoneNumbers(): Collection
+    {
+        return $this->phoneNumbers;
+    }
+
+    /**
+     * @param PhoneNumber $phoneNumber
+     * @return $this
+     */
+    public function addPhoneNumber(PhoneNumber $phoneNumber): static
+    {
+        if (!$this->phoneNumbers->contains($phoneNumber)) {
+            $this->phoneNumbers->add($phoneNumber);
+            $phoneNumber->setUser($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param PhoneNumber $phoneNumber
+     * @return $this
+     */
+    public function removePhoneNumber(PhoneNumber $phoneNumber): static
+    {
+        if ($this->phoneNumbers->removeElement($phoneNumber)) {
+            if ($phoneNumber->getUser() === $this) {
+                $phoneNumber->setUser(null);
+            }
+        }
+
+        return $this;
     }
 }

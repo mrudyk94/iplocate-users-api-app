@@ -1,6 +1,6 @@
 services:
 
-  api:
+  iplocate:
     container_name: php.api
     build:
       context: .
@@ -10,7 +10,7 @@ services:
     volumes:
       - ./app:/var/www/html
     networks:
-      api:
+      iplocate:
         aliases:
           - php.api
 
@@ -24,9 +24,10 @@ services:
     ports:
       - ${APP_OUTER_PORT}:80
     networks:
-      api:
+      iplocate:
         aliases:
           - nginx.api
+
   db:
     image: ${DB_IMAGE}
     container_name: db.api
@@ -41,9 +42,44 @@ services:
     volumes:
         - db:/var/lib/mysql
     networks:
-        api:
+      iplocate:
           aliases:
             - db.api
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # AMQP порт
+      - "15672:15672"   # Web UI порт
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      iplocate:
+        aliases:
+          - rabbitmq.api
+
+  messenger-worker:
+    container_name: messenger.worker.iplocate
+    build:
+      context: .
+      dockerfile: docker/config/php-fpm/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./app:/var/www/html
+    command: php bin/console messenger:consume async -vv --time-limit=3600 --memory-limit=128M
+    depends_on:
+      - rabbitmq
+      - db
+    restart: always
+    networks:
+      iplocate:
+        aliases:
+          - messenger.worker.api
 
 volumes:
   db:
@@ -52,7 +88,9 @@ volumes:
       type: none
       device: ${PWD}/volumes/db/data
       o: bind
+  rabbitmq_data:
+    driver: local
 
 networks:
-  api:
-    name: api
+  iplocate:
+    name: iplocate

@@ -2,43 +2,37 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Api;
+namespace App\UI\Controller\Api;
 
 use App\Application\Exception\AppException;
-use App\Controller\DTO\CreateUserInput;
-use App\Controller\DTO\UpdateUserInput;
-use App\Domain\Entity\User;
+use App\Application\Port\Service\UserServiceInterface;
 use App\Domain\ValueObject\MobilePhone;
-use App\Infrastructure\Repository\UserRepository;
-use Symfony\Bundle\SecurityBundle\Security;
+use App\UI\DTO\CreateUserInput;
+use App\UI\DTO\UpdateUserInput;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/users', name: 'api_users_')]
 final readonly class UserController
 {
     /**
-     * @param UserRepository $userRepository
-     * @param UserPasswordHasherInterface $passwordHasher
-     * @param Security $security
+     * @param UserServiceInterface $userService
      */
     public function __construct(
-        private UserRepository              $userRepository,
-        private UserPasswordHasherInterface $passwordHasher,
-        private Security                    $security
+        private UserServiceInterface $userService,
     )
     {
     }
 
     /**
      * Додаємо нового користувача
+     * @param Request $request
      * @param CreateUserInput $input
      * @return JsonResponse
      */
@@ -46,36 +40,19 @@ final readonly class UserController
         name: 'create',
         methods: ['POST']
     )]
-    #[IsGranted('ROLE_ROOT')]
     public function create(
+        Request $request,
         #[MapRequestPayload] CreateUserInput $input
     ): JsonResponse
     {
-        $user = new User();
-        $user->setLogin($input->login);
-        $user->setPhone(new MobilePhone($input->phone));
-        $user->setRoles(['ROLE_USER']);
+        $this->userService->createUser(
+            $input->firstName,
+            $input->lastName,
+            $input->phoneNumbers,
+            $request->getClientIp()
+        );
 
-        $hashedPassword = $this->passwordHasher->hashPassword($user, $input->password);
-        $user->setPassword($hashedPassword);
-
-        try {
-            $this->userRepository->saveAndFlush($user);
-        } catch (AppException) {
-            throw new ConflictHttpException('User already exists');
-        }
-
-        /**
-         * По завданню вказано повертати пароль при запиту, але я не бачу сенсу, бо він хешований.
-         * Користувачу пароль не потрібен. Навіть хеш — це витік чутливої інформації.
-         */
-        $data = [
-            'id' => $user->getId(),
-            'login' => $user->getLogin(),
-            'phone' => $user->getPhone()->asString()
-        ];
-
-        return new JsonResponse($data, Response::HTTP_CREATED);
+        return new JsonResponse(['message' => 'Створення користувача поставлено в чергу!'], Response::HTTP_CREATED);
     }
 
     /**
@@ -87,7 +64,6 @@ final readonly class UserController
         name: 'update',
         methods: ['PUT']
     )]
-    #[IsGranted('ROLE_USER')]
     public function update(
         #[MapRequestPayload] UpdateUserInput $input
     ): JsonResponse
@@ -126,7 +102,7 @@ final readonly class UserController
         }
 
         $responseData = [
-            'id'       => $user->getId()
+            'id' => $user->getId()
         ];
 
         return new JsonResponse($responseData, Response::HTTP_OK);
@@ -142,17 +118,10 @@ final readonly class UserController
         requirements: ['id' => '[1-9]\d*'],
         methods: ['GET']
     )]
-    #[IsGranted('ROLE_USER')]
     public function getUser(
         int $id
     ): JsonResponse
     {
-        // Звичайний користувач може отримати інформацію тільки про себе
-        $currentUser = $this->security->getUser();
-        if ($currentUser->getRoles()[0] !== 'ROLE_ROOT' && $currentUser->getId() !== $id) {
-            throw new AccessDeniedHttpException('Access denied');
-        }
-
         // Перевірка, чи користувач існує в базі даних
         $user = $this->userRepository->findById($id);
         if (!$user) {
@@ -165,7 +134,6 @@ final readonly class UserController
          */
         $data = [
             'id' => $user->getId(),
-            'login' => $user->getLogin(),
             'phone' => $user->getPhone()->asString(),
         ];
 
@@ -177,12 +145,11 @@ final readonly class UserController
      * @param int $id
      * @return JsonResponse
      */
-    #[Route('/{id}',
+    /*#[Route('/{id}',
         name: 'delete',
         requirements: ['id' => '[1-9]\d*'],
         methods: ['DELETE']
     )]
-    #[IsGranted('ROLE_ROOT')]
     public function delete(
         int $id
     ): JsonResponse
@@ -193,15 +160,9 @@ final readonly class UserController
             throw new NotFoundHttpException(sprintf('User with ID %d not found', $id));
         }
 
-        // Перевірка, щоб не видалити самого себе
-        $currentUser = $this->security->getUser();
-        if ($currentUser->getId() === $user->getId()) {
-            throw new AccessDeniedHttpException('You cannot delete yourself');
-        }
-
         // Видаляємо користувача
         $this->userRepository->deleteAndFlash($user);
 
         return new JsonResponse(['message' => 'User deleted'], Response::HTTP_OK);
-    }
+    }*/
 }

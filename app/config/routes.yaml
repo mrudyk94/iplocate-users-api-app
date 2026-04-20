@@ -9,13 +9,17 @@
 
 controllers:
     resource:
-        path: ../src/Controller
-        namespace: App\Controller
+        path: ../src/UI/Controller
+        namespace: App\UI\Controller
     type: attribute
 
 api:
     resource:
-        path: ../src/Controller/Api
-        namespace: App\Controller\Api
+        path: ../src/UI/Controller/Api
+        namespace: App\UI\Controller\Api
     type: attribute
     prefix: /v1/api
+
+home:
+    path: /
+    controller: App\UI\Controller\HomeController

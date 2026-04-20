@@ -35,7 +35,11 @@ RUN apk add --no-cache \
     bash \
     git \
     unzip \
-    curl
+    curl \
+    rabbitmq-c-dev
+
+RUN pecl install amqp \
+    && docker-php-ext-enable amqp
 
 RUN docker-php-ext-install \
     pdo \

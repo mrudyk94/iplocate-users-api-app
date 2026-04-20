@@ -6,7 +6,6 @@ namespace App\Infrastructure\Repository;
 
 use App\Application\Port\Repository\UserRepositoryInterface;
 use App\Domain\Entity\User;
-use App\Domain\ValueObject\MobilePhone;
 use Doctrine\Persistence\ManagerRegistry;
 
 class UserRepository extends DoctrineEntityRepository implements UserRepositoryInterface
@@ -30,40 +29,14 @@ class UserRepository extends DoctrineEntityRepository implements UserRepositoryI
     /**
      * {@inheritDoc}
      */
-    public function findByLogin(string $login): ?User
+    public function findByPhoneNumber(array $phoneNumbers): ?User
     {
-        $qb = $this->createQueryBuilder('u');
-        $qb->addSelect('u')
-            ->where('u.login = :login')
-            ->setParameter('login', $login);
-        $query = $qb->getQuery();
-        return $query->getOneOrNullResult();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function findByLoginAndPhone(string $login, MobilePhone $phone): ?User
-    {
-        $qb = $this->createQueryBuilder('u');
-        $qb->addSelect('u')
-            ->where('u.login = :login AND u.phone = :phone')
-            ->setParameter('login', $login)
-            ->setParameter('phone', $phone);
-        $query = $qb->getQuery();
-        return $query->getOneOrNullResult();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function findByApiToken(string $token): ?User
-    {
-        $qb = $this->createQueryBuilder('u');
-        $qb->addSelect('u')
-            ->where('u.apiToken = :token')
-            ->setParameter('token', $token);
-        $query = $qb->getQuery();
-        return $query->getOneOrNullResult();
+        return $this->createQueryBuilder('u')
+            ->join('u.phoneNumbers', 'p')
+            ->andWhere('p.number IN (:phones)')
+            ->setParameter('phones', $phoneNumbers)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

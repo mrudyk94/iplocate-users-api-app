@@ -5,6 +5,18 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    http_client:
+        default_options:
+            extra:
+                trace_content: false
+        scoped_clients:
+            ipLookupApiClient:
+                base_uri: '%env(IP_LOOKUP_API_URL)%'
+                timeout: 35
+                headers:
+                    'Content-Type': 'application/json'
+                    'Accept': 'application/json'
+
     #esi: true
     #fragments: true
 
