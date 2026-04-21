@@ -7,8 +7,8 @@ namespace App\Application\Service;
 use App\Application\Message\CreateUserMessage;
 use App\Application\Port\Repository\UserRepositoryInterface;
 use App\Application\Port\Service\UserServiceInterface;
-use App\Domain\Entity\User;
 use DomainException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 class UserService implements UserServiceInterface
@@ -34,14 +34,55 @@ class UserService implements UserServiceInterface
 
         // Користувач вже існує — створення заборонено
         if ($user) {
-            throw new DomainException('Користувач з одним із вказаних номерів телефону вже існує. Створення дубліката заборонено!');
+            throw new DomainException('A user with one of the specified phone numbers already exists. Creating a duplicate is prohibited!');
         }
 
         $this->messageBus->dispatch(new CreateUserMessage(
             firstName: $firstName,
             lastName: $lastName,
             phoneNumbers: $phoneNumbers,
-            ip: '194.62.139.90',
+            ip: $ip,
         ));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getUsersListSorted(string $sortField, string $sortOrder): ?array
+    {
+        $users = $this->userRepository->findAllSorted($sortField, $sortOrder);
+        if(!$users) {
+            return $users;
+        }
+
+        return array_map(
+            static fn ($user) => [
+                'id' => (string) $user->getId(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'ip' => $user->getIp(),
+                'country' => $user->getCountry(),
+                'createdAt' => $user->getCreatedAt()->format(\DateTimeInterface::ATOM),
+                'phoneNumbers' => $user->getPhoneNumbers()
+                    ->map(static fn ($p) => $p->getNumber())
+                    ->toArray(),
+            ],
+            $users
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function deleteUser(int $userId): void
+    {
+        // Перевірка, чи користувач якого хочемо видалити є в базі даних
+        $user = $this->userRepository->findById($userId);
+        if (!$user) {
+            throw new DomainException(sprintf('User with ID %d not found', $userId));
+        }
+
+        // Видаляємо користувача
+        $this->userRepository->deleteAndFlash($user);
     }
 }

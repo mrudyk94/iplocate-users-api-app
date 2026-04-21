@@ -10,7 +10,7 @@ final class MobilePhone implements ValueObject
 {
     use ValueObjectTrait;
 
-    const LENGTH = 13;
+    const int LENGTH = 13;
 
     /**
      * @param string $value

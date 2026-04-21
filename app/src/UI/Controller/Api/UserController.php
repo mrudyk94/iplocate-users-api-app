@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace App\UI\Controller\Api;
 
-use App\Application\Exception\AppException;
 use App\Application\Port\Service\UserServiceInterface;
-use App\Domain\ValueObject\MobilePhone;
 use App\UI\DTO\CreateUserInput;
-use App\UI\DTO\UpdateUserInput;
+use App\UI\DTO\GetListUsersInput;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
+use OpenApi\Attributes as OA;
 
 #[Route('/users', name: 'api_users_')]
+#[OA\Tag(name: 'Users')]
+#[OA\Server(url: '/v1/api')]
 final readonly class UserController
 {
     /**
@@ -30,6 +29,16 @@ final readonly class UserController
     {
     }
 
+    #[Route('/v1/api/ping', methods: ['GET'])]
+    #[OA\Get(
+        path: '/ping',
+        responses: [new OA\Response(response: 200, description: 'OK')]
+    )]
+    public function ping(): JsonResponse
+    {
+        return new JsonResponse(['ok' => true]);
+    }
+
     /**
      * Додаємо нового користувача
      * @param Request $request
@@ -39,6 +48,55 @@ final readonly class UserController
     #[Route('',
         name: 'create',
         methods: ['POST']
+    )]
+    #[OA\Post(
+        path: '/users',
+        description: 'Queues a user creation request for async processing. IP geolocation is resolved in the background.',
+        summary: 'Create a new user',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['firstName', 'lastName', 'phoneNumbers'],
+                properties: [
+                    new OA\Property(property: 'firstName', type: 'string', example: 'Іван'),
+                    new OA\Property(property: 'lastName', type: 'string', example: 'Шевченко'),
+                    new OA\Property(
+                        property: 'phoneNumbers',
+                        type: 'array',
+                        items: new OA\Items(type: 'string', example: '+380971234567'),
+                        minItems: 1,
+                    ),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: Response::HTTP_ACCEPTED,
+                description: 'User creation queued successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'User creation queued'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: Response::HTTP_BAD_REQUEST,
+                description: 'Invalid JSON body',
+            ),
+            new OA\Response(
+                response: Response::HTTP_UNPROCESSABLE_ENTITY,
+                description: 'Validation failed',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: 'errors',
+                            type: 'object',
+                            example: ['firstName' => 'First name is required'],
+                        ),
+                    ]
+                )
+            ),
+        ]
     )]
     public function create(
         Request $request,
@@ -52,92 +110,25 @@ final readonly class UserController
             $request->getClientIp()
         );
 
-        return new JsonResponse(['message' => 'Створення користувача поставлено в чергу!'], Response::HTTP_CREATED);
-    }
-
-    /**
-     * Оновлення користувача
-     * @param UpdateUserInput $input
-     * @return JsonResponse
-     */
-    #[Route('',
-        name: 'update',
-        methods: ['PUT']
-    )]
-    public function update(
-        #[MapRequestPayload] UpdateUserInput $input
-    ): JsonResponse
-    {
-        // Шукаємо користувача за ID
-        $user = $this->userRepository->findById($input->id);
-
-        // Якщо користувача немає — кидаємо 404
-        if (!$user) {
-            throw new NotFoundHttpException(sprintf('User with ID %d not found', $input->id));
-        }
-
-        // Звичайний користувач може оновлювати тільки себе
-        $currentUser = $this->security->getUser();
-        if ($currentUser->getRoles()[0] !== 'ROLE_ROOT') {
-
-            if ($currentUser->getId() !== $user->getId()) {
-                throw new AccessDeniedHttpException('Access denied');
-            }
-        }
-
-        // Оновлюємо дані користувача
-        $user->setLogin($input->login);
-        $user->setPhone(new MobilePhone($input->phone));
-
-        // Оновлюємо пароль, якщо переданий
-        if (!empty($data['password'])) {
-            $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
-            $user->setPassword($hashedPassword);
-        }
-
-        try {
-            $this->userRepository->saveAndFlush($user);
-        } catch (AppException) {
-            throw new ConflictHttpException('User already exists');
-        }
-
-        $responseData = [
-            'id' => $user->getId()
-        ];
-
-        return new JsonResponse($responseData, Response::HTTP_OK);
+        return new JsonResponse(['message' => 'User creation queued!'], Response::HTTP_CREATED);
     }
 
     /**
      * Отримуємо користувача по ID
-     * @param int $id
+     * @param GetListUsersInput $input
      * @return JsonResponse
      */
-    #[Route('/{id}',
-        name: 'user',
-        requirements: ['id' => '[1-9]\d*'],
+    #[Route('/list',
+        name: 'list',
         methods: ['GET']
     )]
-    public function getUser(
-        int $id
+    public function getList(
+        #[MapQueryString] GetListUsersInput $input
     ): JsonResponse
     {
-        // Перевірка, чи користувач існує в базі даних
-        $user = $this->userRepository->findById($id);
-        if (!$user) {
-            throw new NotFoundHttpException(sprintf('User with ID %d not found', $id));
-        }
+        $list = $this->userService->getUsersListSorted($input->sort, $input->order);
 
-        /**
-         * По завданню вказано повертати пароль при запиту, але я не бачу сенсу, бо він хешований.
-         * Користувачу пароль не потрібен. Навіть хеш — це витік чутливої інформації.
-         */
-        $data = [
-            'id' => $user->getId(),
-            'phone' => $user->getPhone()->asString(),
-        ];
-
-        return new JsonResponse($data, Response::HTTP_OK);
+        return new JsonResponse(['list' => $list], Response::HTTP_OK);
     }
 
     /**
@@ -145,7 +136,7 @@ final readonly class UserController
      * @param int $id
      * @return JsonResponse
      */
-    /*#[Route('/{id}',
+    #[Route('/{id}',
         name: 'delete',
         requirements: ['id' => '[1-9]\d*'],
         methods: ['DELETE']
@@ -154,15 +145,8 @@ final readonly class UserController
         int $id
     ): JsonResponse
     {
-        // Перевірка, чи користувач якого хочемо видалити є в базі даних
-        $user = $this->userRepository->findById($id);
-        if (!$user) {
-            throw new NotFoundHttpException(sprintf('User with ID %d not found', $id));
-        }
+        $this->userService->deleteUser($id);
 
-        // Видаляємо користувача
-        $this->userRepository->deleteAndFlash($user);
-
-        return new JsonResponse(['message' => 'User deleted'], Response::HTTP_OK);
-    }*/
+        return new JsonResponse(['message' => 'User deleted!'], Response::HTTP_NO_CONTENT);
+    }
 }

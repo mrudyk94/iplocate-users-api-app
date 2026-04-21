@@ -22,4 +22,12 @@ interface UserRepositoryInterface extends EntityRepositoryInterface
      * @return User|null
      */
     public function findByPhoneNumber(array $phoneNumbers): ?User;
+
+    /**
+     * Отримання списку користувачів у відсортованому вигляді
+     * @param string $sortField
+     * @param string $sortDirection
+     * @return array|null
+     */
+    public function findAllSorted(string $sortField, string $sortDirection): ?array;
 }

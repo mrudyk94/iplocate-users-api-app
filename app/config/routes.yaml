@@ -20,6 +20,12 @@ api:
     type: attribute
     prefix: /v1/api
 
+app.swagger_ui:
+    path: /api/doc
+    controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
+    defaults:
+        template: swagger/index.html.twig
+
 home:
     path: /
     controller: App\UI\Controller\HomeController

@@ -7,6 +7,7 @@ namespace App\Application\Port\Gateway;
 interface IpLookupGatewayInterface
 {
     /**
+     * Визначення країни по IP адреси
      * @param string $ip
      * @return string|null
      */

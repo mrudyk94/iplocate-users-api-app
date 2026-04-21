@@ -10,6 +10,8 @@ use Doctrine\Persistence\ManagerRegistry;
 
 class UserRepository extends DoctrineEntityRepository implements UserRepositoryInterface
 {
+    private const array ALLOWED_SORT_FIELDS = ['firstName', 'lastName', 'createdAt', 'updateAt', 'country'];
+
     /**
      * @param ManagerRegistry $registry
      */
@@ -38,5 +40,24 @@ class UserRepository extends DoctrineEntityRepository implements UserRepositoryI
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function findAllSorted(string $sortField, string $sortDirection): ?array
+    {
+        if (!\in_array($sortField, self::ALLOWED_SORT_FIELDS, true)) {
+            $sortField = 'createdAt';
+        }
+
+        $direction = strtoupper($sortDirection) === 'ASC' ? 'ASC' : 'DESC';
+
+        return $this->createQueryBuilder('u')
+            ->leftJoin('u.phoneNumbers', 'p')
+            ->addSelect('p')
+            ->orderBy('u.'.$sortField, $direction)
+            ->getQuery()
+            ->getResult();
     }
 }

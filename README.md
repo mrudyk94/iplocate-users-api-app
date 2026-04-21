@@ -1,4 +1,4 @@
-# 🚀 Users API App
+# 🚀 IP Locate API App
 
 Backend API сервіс для роботи з користувачами.  
 Проєкт запускається в Docker та використовує Symfony + MariaDB.
@@ -11,12 +11,23 @@ Backend API сервіс для роботи з користувачами.
 - 🐳 Docker Compose
 - 🐧 Linux / macOS (або WSL для Windows)
 
+## Tech Stack
+
+| Concern | Solution                               |
+|---|----------------------------------------|
+| Framework | Symfony 7                              |
+| Database | Mariadb:10.11.6                        |
+| Queue | RabbitMQ + Symfony Messenger            |
+| IP Geolocation | iplocate.io REST API                   |
+| API Docs | NelmioApiDocBundle + swagger-php       |
+| Tests | PHPUnit 11 + dama/doctrine-test-bundle |
+
 ## ⚙️ Швидкий старт
 
 ### 1️⃣ Клонування репозиторію
 ```bash
-git clone https://github.com/mrudyk94/iplocate-users-api-app.git
-cd users-api-app
+https://github.com/mrudyk94/iplocate-users-api-app.git
+cd iplocate-users-api-app
 ```
 
 ### 2️⃣ Створення .env
@@ -54,83 +65,69 @@ docker compose exec iplocate composer install
 docker compose down -v && docker compose up -d
 ```
 ```bash
-docker compose exec api php bin/console doctrine:migrations:migrate
+docker compose exec iplocate php bin/console doctrine:migrations:migrate
 ```
 
-### 6️⃣ Створення root-користувача без входу в контейнер
-```bash
-docker compose exec api php bin/console app:user:create-root +380635492939 ]YZ5oY0m
-```
+### 🐰 RabbitMQ
 
-```text
-В базі даних буде створено root-користувача з такими даними:
-id:        1
-login:     root
-password:  ]YZ5oY0m
-phone:     +380635492939
+Проєкт використовує RabbitMQ як транспорт для Symfony Messenger.
 
-Атрибут `password` є обовʼязковим у запиті, але не повертається у відповідях з міркувань безпеки.
-У БД зберігається у хешованому вигляді.
-```
-### 🔐 Авторизація
-API використовує **JWT токен** для авторизації користувачів.  
-Всі запити до `/v1/api/*` повинні містити заголовок `Authorization` з токеном:
+### 🔗 Management UI
+http://localhost:15672
 
-```html
-Authorization: Bearer YOUR_ROOT_TOKEN
-```
+**Credentials:**
+- login: `guest`
+- password: `guest`
 
-Замініть YOUR_ROOT_TOKEN на реальний токен root-користувача або будь-якого іншого користувача
+### 📌 Використання
+- черга для обробки створення користувачів
+- асинхронна обробка через worker-и
+- можливість моніторингу повідомлень у реальному часі
 
 ### 🧪 Приклади API-запитів (curl)
-🔹 Отримання токена через login ендпоінт
 
-Доданий ендпоінт для авторизації: /v1/api/login.
-Він приймає `login` та `password` і у відповіді повертає JWT токен, який потім використовується у всіх запитах API.
+🔹 **Отримання списку користувачів**
+
+Метод підтримує сортування результатів.
+
+#### `sort` — поле для сортування
+Обов’язковий параметр.
+
+Доступні значення:
+- `firstName` — ім’я
+- `lastName` — прізвище
+- `createdAt` — дата створення
+- `updateAt` — дата оновлення
+- `country` — країна
+
+#### `order` — напрямок сортування
+Необов’язковий параметр (за замовчуванням `DESC`).
+
+Доступні значення:
+- `ASC` — за зростанням
+- `DESC` — за спаданням
+
 ```bash
-curl --location --request POST 'http://localhost:8045/v1/api/login' \
+curl --location 'http://localhost:8045/v1/api/users' \
 --header 'Content-Type: application/json' \
 --data '{
-    "login": "test_user",
-    "password": "123456"
-}'
-
-```
-
-🔹 Створити користувача
-```bash
-curl --location --request POST 'http://localhost:8045/v1/api/users' \
---header 'Content-Type: application/json' \
---header 'Authorization: Bearer YOUR_ROOT_TOKEN' \
---data '{
-    "login": "test_user",
-    "phone": "+380991112233",
-    "password": "123456"
+    "firstName": "Іван",
+    "lastName": "Шевченко",
+    "phoneNumbers": [
+        "+380971234561",
+        "+380631234561",
+        "+380635492938"
+    ]
 }'
 ```
-🔹 Оновити користувача
+🔹 Отримати список всіх користувачів у сортованому вигляді
 ```bash
-curl --location --request PUT 'http://localhost:8045/v1/api/users' \
---header 'Content-Type: application/json' \
---header 'Authorization: Bearer YOUR_ROOT_TOKEN' \
---data '{
-    "id": "2",
-    "login": "updated_user",
-    "phone": "+380998877665",
-    "password": "newpassword"
-}'
+curl --location 'http://localhost:8045/v1/api/users/list?sort=createdAt&order=DESC'
 ```
 
-🔹 Отримати користувача по ID
+🔹 Видалення користувача
 ```bash
-curl --location --request GET 'http://localhost:8045/v1/api/users/2' \
---header 'Authorization: Bearer YOUR_ROOT_TOKEN'
-```
-
-🔹 Видалити користувача
-```bash
-curl --location --request DELETE 'http://localhost:8045/v1/api/users/2' \
---header 'Authorization: Bearer YOUR_ROOT_TOKEN'
+curl --location --request DELETE 'http://localhost:8045/v1/api/users/1'
 ```
 
 ### 🧪 Postman Collection
@@ -139,132 +136,101 @@ curl --location --request DELETE 'http://localhost:8045/v1/api/users/2' \
 
 Щоб швидко тестувати API:
 
-1. Скопіюй JSON нижче у файл `users-api.postman_collection.json`
+1. Скопіюй JSON нижче у файл `Payment API.postman_collection.json`
 2. Відкрий Postman → **Import** → **File** → вибери цей файл
-3. Замініть `YOUR_ROOT_TOKEN` на токен root-користувача або будь-якого іншого користувача
-4. Тепер готові GET, POST, PUT, DELETE запити до API
+3. Тепер готові запити до API
 
 {
   "info": {
-    "name": "Users API App",
-    "_postman_id": "users-api-collection",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "_postman_id": "683820be-2d35-4980-a568-908cf6419337",
+    "name": "RESTful API users",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6390017"
   },
   "item": [
     {
-      "name": "Login (get token)",
+      "name": "Add User",
       "request": {
         "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
+        "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"login\": \"root\",\n  \"password\": \"]YZ5oY0m\"\n}"
+          "raw": "{\r\n    \"firstName\": \"Іван\",\r\n    \"lastName\": \"Шевченко\",\r\n    \"phoneNumbers\": [\r\n        \"+380971234561\",\r\n        \"+380631234561\",\r\n        \"+380635492938\"\r\n    ]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": {
-          "raw": "http://localhost:8045/v1/api/login",
+          "raw": "http://localhost:8045/v1/api/users",
           "protocol": "http",
-          "host": ["localhost"],
+          "host": [
+            "localhost"
+          ],
           "port": "8045",
-          "path": ["v1","api","login"]
+          "path": [
+            "v1",
+            "api",
+            "users"
+          ]
         }
-      }
+      },
+      "response": []
     },
     {
-      "name": "Get Users",
+      "name": "Get List Users All",
       "request": {
         "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer YOUR_ROOT_TOKEN"
-          }
-        ],
+        "header": [],
         "url": {
-          "raw": "http://localhost:8045/v1/api/users/1",
+          "raw": "http://localhost:8045/v1/api/users/list?sort=createdAt&order=DESC",
           "protocol": "http",
-          "host": ["localhost"],
+          "host": [
+            "localhost"
+          ],
           "port": "8045",
-          "path": ["v1","api","users","1"]
+          "path": [
+            "v1",
+            "api",
+            "users",
+            "list"
+          ],
+          "query": [
+            {
+              "key": "sort",
+              "value": "createdAt"
+            },
+            {
+              "key": "order",
+              "value": "DESC"
+            }
+          ]
         }
-      }
-    },
-    {
-      "name": "Create User",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer YOUR_ROOT_TOKEN"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"login\": \"test_user\",\n  \"password\": \"123456\",\n  \"phone\": \"+380991112233\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8045/v1/api/users",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8045",
-          "path": ["v1","api","users"]
-        }
-      }
-    },
-    {
-      "name": "Update User",
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer YOUR_ROOT_TOKEN"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"id\": \"user_id\", \n  \"login\": \"updated_user\",\n  \"password\": \"newpassword\",\n  \"phone\": \"+380998877665\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8045/v1/api/users",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8045",
-          "path": ["v1","api","users"]
-        }
-      }
+      },
+      "response": []
     },
     {
       "name": "Delete User",
       "request": {
         "method": "DELETE",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer YOUR_ROOT_TOKEN"
-          }
-        ],
+        "header": [],
         "url": {
           "raw": "http://localhost:8045/v1/api/users/1",
           "protocol": "http",
-          "host": ["localhost"],
+          "host": [
+            "localhost"
+          ],
           "port": "8045",
-          "path": ["v1","api","users","1"]
+          "path": [
+            "v1",
+            "api",
+            "users",
+            "1"
+          ]
         }
-      }
+      },
+      "response": []
     }
   ]
 }

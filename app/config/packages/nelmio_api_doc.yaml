@@ -1,0 +1,20 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: User REST API
+            description: |
+                REST API for user management with asynchronous queue processing.
+
+                Users are queued via Redis Messenger and processed asynchronously.
+                IP geolocation is resolved using the iplocate.io API.
+            version: 1.0.0
+        servers:
+            - url: http://localhost:8045
+              description: Local Docker environment
+    areas:
+        default:
+            path_patterns:
+                - ^/users
+                - ^/list
+                - ^/
+            with_attribute: true

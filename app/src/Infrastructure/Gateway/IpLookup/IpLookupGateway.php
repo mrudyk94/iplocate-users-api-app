@@ -44,7 +44,7 @@ class IpLookupGateway implements IpLookupGatewayInterface
 
             return $data['country'] ?? null;
         } catch (\Throwable $e) {
-            $this->logger->warning('Не вдалося знайти країну IP-адреси', [
+            $this->logger->warning('Could not find IP address country!', [
                 'ip' => $ip,
                 'error' => $e->getMessage(),
             ]);
