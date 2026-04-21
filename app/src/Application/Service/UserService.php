@@ -40,7 +40,7 @@ class UserService implements UserServiceInterface
             firstName: $firstName,
             lastName: $lastName,
             phoneNumbers: $phoneNumbers,
-            ip: $ip,
+            ip: '203.119.101.61',
         ));
     }
 

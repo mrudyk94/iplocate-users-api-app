@@ -9,19 +9,16 @@ use App\Application\Port\Gateway\IpLookupGatewayInterface;
 use App\Application\Port\Repository\UserRepositoryInterface;
 use App\Domain\Entity\PhoneNumber;
 use App\Domain\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 class CreateUserMessageHandler
 {
     /**
-     * @param EntityManagerInterface $entityManager
      * @param IpLookupGatewayInterface $ipLookupGateway
      * @param UserRepositoryInterface $userRepository
      */
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
         private readonly IpLookupGatewayInterface $ipLookupGateway,
         private readonly UserRepositoryInterface  $userRepository
     )

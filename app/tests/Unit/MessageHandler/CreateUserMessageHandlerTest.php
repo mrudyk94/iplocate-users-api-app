@@ -5,20 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Unit\MessageHandler;
 
 use App\Application\Message\CreateUserMessage;
-use App\Application\Port\Repository\UserRepositoryInterface;
-use App\Domain\Entity\User;
 use App\Application\MessageHandler\CreateUserMessageHandler;
 use App\Application\Port\Gateway\IpLookupGatewayInterface;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Application\Port\Repository\UserRepositoryInterface;
+use App\Domain\Entity\User;
 use PHPUnit\Framework\MockObject\Exception;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class CreateUserMessageHandlerTest extends TestCase
 {
-    private EntityManagerInterface&MockObject $entityManager;
     private IpLookupGatewayInterface&MockObject $ipLookupGateway;
-    private UserRepositoryInterface $userRepository;
+    private UserRepositoryInterface&MockObject $userRepository;
     private CreateUserMessageHandler $handler;
 
     /**
@@ -27,10 +25,10 @@ class CreateUserMessageHandlerTest extends TestCase
      */
     protected function setUp(): void
     {
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->ipLookupService = $this->createMock(IpLookupGatewayInterface::class);
+        $this->ipLookupGateway = $this->createMock(IpLookupGatewayInterface::class);
+        $this->userRepository = $this->createMock(UserRepositoryInterface::class);
+
         $this->handler = new CreateUserMessageHandler(
-            $this->entityManager,
             $this->ipLookupGateway,
             $this->userRepository,
         );
@@ -41,31 +39,32 @@ class CreateUserMessageHandlerTest extends TestCase
      */
     public function testHandlerPersistsUserWithResolvedCountry(): void
     {
+        $firstName = 'Іван';
+        $lastName = 'Шевченко';
+
         $message = new CreateUserMessage(
-            firstName: 'John',
-            lastName: 'Doe',
+            firstName: $firstName,
+            lastName: $lastName,
             phoneNumbers: ['+380971234567'],
             ip: '8.8.8.8',
         );
 
-        $this->ipLookupService
+        $this->ipLookupGateway
             ->expects($this->once())
             ->method('getCountry')
             ->with('8.8.8.8')
             ->willReturn('Ukraine');
 
-        $this->entityManager
+        $this->userRepository
             ->expects($this->once())
-            ->method('persist')
+            ->method('saveAndFlush')
             ->with($this->callback(function (User $user) {
-                return $user->getFirstName() === 'John'
-                    && $user->getLastName() === 'Doe'
+                return $user->getFirstName() === 'Іван'
+                    && $user->getLastName() === 'Шевченко'
                     && $user->getCountry() === 'Ukraine'
                     && $user->getIp() === '8.8.8.8'
                     && $user->getPhoneNumbers()->count() === 1;
             }));
-
-        $this->entityManager->expects($this->once())->method('flush');
 
         ($this->handler)($message);
     }
@@ -75,21 +74,24 @@ class CreateUserMessageHandlerTest extends TestCase
      */
     public function testHandlerSkipsIpLookupWhenIpIsNull(): void
     {
+        $firstName = 'Іван';
+        $lastName = 'Шевченко';
+
         $message = new CreateUserMessage(
-            firstName: 'Jane',
-            lastName: 'Doe',
+            firstName: $firstName,
+            lastName: $lastName,
             phoneNumbers: ['+380971234567'],
             ip: null,
         );
 
-        $this->ipLookupService->expects($this->never())->method('getCountry');
+        $this->ipLookupGateway
+            ->expects($this->never())
+            ->method('getCountry');
 
-        $this->entityManager
+        $this->userRepository
             ->expects($this->once())
-            ->method('persist')
+            ->method('saveAndFlush')
             ->with($this->callback(fn (User $user) => $user->getCountry() === null));
-
-        $this->entityManager->expects($this->once())->method('flush');
 
         ($this->handler)($message);
     }
@@ -99,20 +101,27 @@ class CreateUserMessageHandlerTest extends TestCase
      */
     public function testHandlerAddsAllPhoneNumbers(): void
     {
+        $firstName = 'Іван';
+        $lastName = 'Шевченко';
+
+        $capturedUser = null;
+
         $message = new CreateUserMessage(
-            firstName: 'John',
-            lastName: 'Doe',
-            phoneNumbers: ['+380971234567', '+380631234567', '+380501234567'],
+            firstName: $firstName,
+            lastName: $lastName,
+            phoneNumbers: [
+                '+380971234567',
+                '+380631234567',
+                '+380501234567'
+            ],
             ip: null,
         );
 
-        $capturedUser = null;
-        $this->entityManager
+        $this->userRepository
             ->expects($this->once())
-            ->method('persist')
+            ->method('saveAndFlush')
             ->with($this->callback(function (User $user) use (&$capturedUser) {
                 $capturedUser = $user;
-
                 return true;
             }));
 
@@ -127,18 +136,23 @@ class CreateUserMessageHandlerTest extends TestCase
      */
     public function testHandlerSetsNullCountryWhenLookupReturnsNull(): void
     {
+        $firstName = 'Іван';
+        $lastName = 'Шевченко';
+
         $message = new CreateUserMessage(
-            firstName: 'John',
-            lastName: 'Doe',
+            firstName: $firstName,
+            lastName: $lastName,
             phoneNumbers: ['+380971234567'],
             ip: '8.8.8.8',
         );
 
-        $this->ipLookupService->method('getCountry')->willReturn(null);
+        $this->ipLookupGateway
+            ->method('getCountry')
+            ->willReturn(null);
 
-        $this->entityManager
+        $this->userRepository
             ->expects($this->once())
-            ->method('persist')
+            ->method('saveAndFlush')
             ->with($this->callback(fn (User $user) => $user->getCountry() === null));
 
         ($this->handler)($message);
