@@ -17,6 +17,24 @@ final class MobilePhone implements ValueObject
      */
     public function __construct(string $value)
     {
+        $this->validateMobilePhone($value);
+
+        $this->value = $value;
+    }
+
+    /**
+     * @return string
+     */
+    public function getValue(): string
+    {
+        return $this->value;
+    }
+
+    /**
+     * Перевірка валідності номера телефону
+     */
+    private function validateMobilePhone(string $value): void
+    {
         if ($value === '') {
             throw new DomainException('Phone number is empty');
         }
@@ -28,15 +46,5 @@ final class MobilePhone implements ValueObject
         if (!preg_match('/^\+380\d{9}$/', $value)) {
             throw new DomainException("`$value` does not match the format +380XXXXXXXXX");
         }
-
-        $this->value = $value;
-    }
-
-    /**
-     * @return string
-     */
-    public function getValue(): string
-    {
-        return $this->value;
     }
 }
