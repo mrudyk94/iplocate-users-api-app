@@ -84,11 +84,13 @@ http://localhost:15672
 - асинхронна обробка через worker-и
 - можливість моніторингу повідомлень у реальному часі
 
-### API Documentation
+### 📚 API Документація
 
-Visit **http://localhost:8045/api/doc** for the Swagger UI.
+Swagger UI доступний за адресою:
+http://localhost:8045/api/doc
 
-OpenAPI JSON spec: **http://localhost:8045/api/doc.json**
+OpenAPI специфікація:
+http://localhost:8045/api/doc.json
 
 ### 🧪 Приклади API-запитів (curl)
 
@@ -142,7 +144,7 @@ curl --location --request DELETE 'http://localhost:8045/v1/api/users/1'
 
 Щоб швидко тестувати API:
 
-1. Скопіюй JSON нижче у файл `Payment API.postman_collection.json`
+1. Скопіюй JSON нижче у файл `REST API users.postman_collection`
 2. Відкрий Postman → **Import** → **File** → вибери цей файл
 3. Тепер готові запити до API
 

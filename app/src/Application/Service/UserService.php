@@ -8,7 +8,6 @@ use App\Application\Message\CreateUserMessage;
 use App\Application\Port\Repository\UserRepositoryInterface;
 use App\Application\Port\Service\UserServiceInterface;
 use DomainException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 class UserService implements UserServiceInterface
