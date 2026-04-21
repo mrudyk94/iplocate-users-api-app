@@ -3,18 +3,14 @@ nelmio_api_doc:
         info:
             title: User REST API
             description: |
-                REST API for user management with asynchronous queue processing.
+                REST API for user management with asynchronous processing via RabbitMQ.
 
-                Users are queued via Redis Messenger and processed asynchronously.
-                IP geolocation is resolved using the iplocate.io API.
+                User creation requests are dispatched to a message queue using Symfony Messenger and handled asynchronously by background workers.
+                IP geolocation is resolved using the iplocate.io API during processing.
             version: 1.0.0
         servers:
             - url: http://localhost:8045
               description: Local Docker environment
     areas:
-        default:
-            path_patterns:
-                - ^/users
-                - ^/list
-                - ^/
-            with_attribute: true
+        path_patterns:
+            - ^/v1/api

@@ -84,6 +84,12 @@ http://localhost:15672
 - асинхронна обробка через worker-и
 - можливість моніторингу повідомлень у реальному часі
 
+### API Documentation
+
+Visit **http://localhost:8045/api/doc** for the Swagger UI.
+
+OpenAPI JSON spec: **http://localhost:8045/api/doc.json**
+
 ### 🧪 Приклади API-запитів (curl)
 
 🔹 **Отримання списку користувачів**

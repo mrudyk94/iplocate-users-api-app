@@ -15,9 +15,8 @@ use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Annotation\Route;
 use OpenApi\Attributes as OA;
 
-#[Route('/users', name: 'api_users_')]
 #[OA\Tag(name: 'Users')]
-#[OA\Server(url: '/v1/api')]
+#[Route('/users', name: 'api_users_')]
 final readonly class UserController
 {
     /**
@@ -27,16 +26,6 @@ final readonly class UserController
         private UserServiceInterface $userService,
     )
     {
-    }
-
-    #[Route('/v1/api/ping', methods: ['GET'])]
-    #[OA\Get(
-        path: '/ping',
-        responses: [new OA\Response(response: 200, description: 'OK')]
-    )]
-    public function ping(): JsonResponse
-    {
-        return new JsonResponse(['ok' => true]);
     }
 
     /**
@@ -50,7 +39,6 @@ final readonly class UserController
         methods: ['POST']
     )]
     #[OA\Post(
-        path: '/users',
         description: 'Queues a user creation request for async processing. IP geolocation is resolved in the background.',
         summary: 'Create a new user',
         requestBody: new OA\RequestBody(
@@ -89,9 +77,14 @@ final readonly class UserController
                 content: new OA\JsonContent(
                     properties: [
                         new OA\Property(
-                            property: 'errors',
-                            type: 'object',
-                            example: ['firstName' => 'First name is required'],
+                            property: 'error',
+                            type: 'string',
+                            example: "First name cannot be empty. First name must be at least 3 characters long",
+                        ),
+                        new OA\Property(
+                            property: 'status',
+                            type: 'integer',
+                            example: 422,
                         ),
                     ]
                 )
@@ -122,6 +115,47 @@ final readonly class UserController
         name: 'list',
         methods: ['GET']
     )]
+    #[OA\Get(
+        description: 'Returns a sorted list of users. Supports sorting and ordering via query parameters.',
+        summary: 'Get list of users',
+        parameters: [
+            new OA\Parameter(
+                name: 'sort',
+                description: 'Field by which to sort users',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', example: 'createdAt')
+            ),
+            new OA\Parameter(
+                name: 'order',
+                description: 'Sort direction',
+                in: 'query',
+                required: false,
+                schema: new OA\Schema(type: 'string', example: 'ASC', enum: ['ASC', 'DESC'])
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: Response::HTTP_OK,
+                description: 'List of users retrieved successfully',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: 'data',
+                            type: 'array',
+                            items: new OA\Items(
+                                type: 'object'
+                            )
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: Response::HTTP_BAD_REQUEST,
+                description: 'Invalid query parameters'
+            )
+        ]
+    )]
     public function getList(
         #[MapQueryString] GetListUsersInput $input
     ): JsonResponse
@@ -141,12 +175,39 @@ final readonly class UserController
         requirements: ['id' => '[1-9]\d*'],
         methods: ['DELETE']
     )]
+    #[OA\Delete(
+        description: 'Deletes a user by their unique identifier.',
+        summary: 'Delete user',
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                description: 'User ID',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'integer', example: 5)
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: Response::HTTP_NO_CONTENT,
+                description: 'User deleted successfully'
+            ),
+            new OA\Response(
+                response: Response::HTTP_NOT_FOUND,
+                description: 'User not found'
+            ),
+            new OA\Response(
+                response: Response::HTTP_BAD_REQUEST,
+                description: 'Invalid user ID'
+            )
+        ]
+    )]
     public function delete(
         int $id
     ): JsonResponse
     {
         $this->userService->deleteUser($id);
 
-        return new JsonResponse(['message' => 'User deleted!'], Response::HTTP_NO_CONTENT);
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 }
