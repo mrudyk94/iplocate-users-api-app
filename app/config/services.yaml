@@ -11,7 +11,6 @@ services:
         autowire: true
         autoconfigure: true
 
-    # ALL services except controllers
     App\:
         resource: '../src/'
         exclude:
@@ -21,7 +20,12 @@ services:
             - '../src/Domain/ValueObject/'
             - '../src/Kernel.php'
 
-    # Controllers MUST be explicit
     App\UI\Controller\:
         resource: '../src/UI/Controller/'
         tags: ['controller.service_arguments']
+
+when@test:
+    services:
+        App\Application\Port\Gateway\IpLookupServiceInterface:
+            class: App\Tests\Mock\NullIpLookupGateway
+            public: true

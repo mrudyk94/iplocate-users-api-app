@@ -9,11 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class GetListUsersInput
 {
     public function __construct(
-        #[Assert\NotBlank]
-        #[Assert\Choice(
-            choices: ['firstName', 'lastName', 'createdAt', 'updateAt', 'country'],
-            message: 'Invalid sort field!'
-        )]
+        #[Assert\NotBlank(message: 'Sort field must not be blank!')]
         public string $sort = 'createdAt',
 
         #[Assert\Choice(

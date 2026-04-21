@@ -20,7 +20,7 @@ Backend API сервіс для роботи з користувачами.
 | Queue | RabbitMQ + Symfony Messenger            |
 | IP Geolocation | iplocate.io REST API                   |
 | API Docs | NelmioApiDocBundle + swagger-php       |
-| Tests | PHPUnit 11 + dama/doctrine-test-bundle |
+| Tests | PHPUnit 12 + Symfony KernelTestCase + Doctrine ORM |
 
 ## ⚙️ Швидкий старт
 

@@ -110,7 +110,7 @@ final readonly class UserController
             $request->getClientIp()
         );
 
-        return new JsonResponse(['message' => 'User creation queued!'], Response::HTTP_CREATED);
+        return new JsonResponse(['message' => 'User creation queued!'], Response::HTTP_ACCEPTED);
     }
 
     /**
@@ -126,9 +126,9 @@ final readonly class UserController
         #[MapQueryString] GetListUsersInput $input
     ): JsonResponse
     {
-        $list = $this->userService->getUsersListSorted($input->sort, $input->order);
+        $data = $this->userService->getUsersListSorted($input->sort, $input->order);
 
-        return new JsonResponse(['list' => $list], Response::HTTP_OK);
+        return new JsonResponse(['data' => $data], Response::HTTP_OK);
     }
 
     /**
